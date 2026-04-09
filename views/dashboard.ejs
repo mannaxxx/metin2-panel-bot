@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= config.panelTitle %></title>
+  <link rel="stylesheet" href="/public/css/style.css" />
+</head>
+<body class="with-loader">
+<div class="page-loader"><div class="loader-orb"></div><span>Panel yükleniyor...</span></div>
+<div class="layout fade-shell">
+  <%- include('partials') %>
+
+  <main class="main">
+    <div class="page-header between modern-headline">
+      <div>
+        <span class="eyebrow">CANLI KONTROL MERKEZİ</span>
+        <h1><%= config.panelTitle %></h1>
+        <p><%= config.panelSubtitle %></p>
+      </div>
+      <div class="header-actions">
+        <a href="/logs" class="btn btn-secondary">📝 Loglar</a>
+        <a href="/settings" class="btn btn-secondary">⚙ Ayarlar</a>
+        <form method="post" action="/activity/reset" onsubmit="return confirmPanelReset('Aktivite Takibi panelindeki tüm veriler sıfırlanacak. Devam etmek için SIFIRLA yaz.');">
+          <button class="btn btn-danger" type="submit">🗑 Aktiviteyi Sıfırla</button>
+        </form>
+      </div>
+    </div>
+
+    <% if (message) { %>
+      <div class="alert <%= messageType === 'error' ? 'error' : 'success' %>"><%= message %></div>
+    <% } %>
+
+    <section class="hero-band card-shell">
+      <div>
+        <span class="eyebrow">ANLIK DURUM</span>
+        <h2>Yetkili aktivitesini tek ekrandan takip et</h2>
+        <p>En aktif isimleri, günlük mesaj temposunu ve online yetkilileri canlı olarak gör.</p>
+      </div>
+      <div class="hero-chips">
+        <div class="hero-chip"><span>Discord</span><strong id="live-discord-status"><%= discordState.connected ? 'Bağlı' : 'Kapalı' %></strong></div>
+        <div class="hero-chip"><span>Kanal</span><strong id="live-channel-count"><%= summary.trackedChannels %></strong></div>
+        <div class="hero-chip"><span>Rol</span><strong id="live-role-count"><%= summary.trackedRoles %></strong></div>
+      </div>
+    </section>
+
+    <div class="modern-dashboard-grid">
+      <section class="dashboard-content">
+        <section class="cards-grid premium-grid modern-stats-grid">
+          <div class="stat-card premium-card hover-zoom stat-card-glow blue-glow">
+            <div class="stat-head">
+              <div class="stat-title">TOPLAM YETKİLİ</div>
+              <div class="stat-icon blue">👥</div>
+            </div>
+            <div class="stat-value" id="live-total-staff"><%= summary.totalStaff %></div>
+            <div class="stat-sub">Takip edilen tüm üyeler</div>
+          </div>
+          <div class="stat-card premium-card hover-zoom stat-card-glow yellow-glow">
+            <div class="stat-head">
+              <div class="stat-title">GÜNLÜK MESAJ</div>
+              <div class="stat-icon yellow">💬</div>
+            </div>
+            <div class="stat-value" id="live-daily-messages"><%= summary.dailyMessages %></div>
+            <div class="stat-sub">Bugün 00:00'dan beri</div>
+          </div>
+          <div class="stat-card premium-card hover-zoom stat-card-glow red-glow">
+            <div class="stat-head">
+              <div class="stat-title">TOPLAM MESAJ</div>
+              <div class="stat-icon red">⚔</div>
+            </div>
+            <div class="stat-value" id="live-total-messages"><%= summary.totalMessages %></div>
+            <div class="stat-sub">Tüm zamanlar mesajı</div>
+          </div>
+          <div class="stat-card premium-card hover-zoom stat-card-glow gold-glow">
+            <div class="stat-head">
+              <div class="stat-title">EN AKTİF</div>
+              <div class="stat-icon gold">👑</div>
+            </div>
+            <div class="stat-value text-clip interactive-name name-gold" id="live-active-name"><%= summary.topActive %></div>
+            <div class="stat-sub">Günün lider yetkilisi</div>
+          </div>
+        </section>
+
+        <% const selectedChannelItems = (selectedChannels || []).slice(0, 6); %>
+        <% const selectedRoleItems = (selectedRoles || []).slice(0, 6); %>
+
+        <section class="dashboard-two-col clean-dashboard-panels">
+          <div class="table-card premium-table-card compact-summary-card">
+            <div class="table-toolbar">
+              <div>
+                <span class="eyebrow">DURUM ÖZETİ</span>
+                <h3>Yetkili görünümü</h3>
+              </div>
+            </div>
+            <div class="mini-grid management-summary premium-mini-grid">
+              <div class="mini-card fancy-mini hover-zoom summary-showcase-card">
+                <span>Toplam yetkili</span>
+                <strong><span class="numeric-accent numeric-blue"><%= summary.totalStaff %></span> kişi</strong>
+              </div>
+              <div class="mini-card fancy-mini hover-zoom summary-showcase-card">
+                <span>Çevrimiçi</span>
+                <strong class="accent-green"><%= memberDirectory.filter(m => (m.presenceStatus||'offline') === 'online').length %></strong>
+              </div>
+              <div class="mini-card fancy-mini hover-zoom summary-showcase-card">
+                <span>Boşta</span>
+                <strong class="numeric-accent numeric-gold"><%= memberDirectory.filter(m => (m.presenceStatus||'offline') === 'idle').length %></strong>
+              </div>
+              <div class="mini-card fancy-mini danger-mini hover-zoom summary-showcase-card">
+                <span>Rahatsız etmeyin</span>
+                <strong class="numeric-accent numeric-red"><%= memberDirectory.filter(m => (m.presenceStatus||'offline') === 'dnd').length %></strong>
+              </div>
+            </div>
+          </div>
+          <div class="table-card premium-table-card compact-summary-card">
+            <div class="table-toolbar">
+              <div>
+                <span class="eyebrow">CANLI KANALLAR</span>
+                <h3>Takip ayarları</h3>
+              </div>
+            </div>
+            <div class="mini-grid management-summary premium-mini-grid">
+              <div class="mini-card fancy-mini hover-zoom summary-showcase-card">
+                <span>Takip edilen kanal</span>
+                <strong><span id="live-channel-count-inline" class="numeric-accent numeric-blue"><%= summary.trackedChannels %></span> kanal</strong>
+                <div class="summary-chip-wrap" id="live-channel-tags">
+                  <% if (!(selectedChannels || []).length) { %><span class="subtle-tag">Kanal seçilmedi</span><% } %>
+                  <% (selectedChannels || []).slice(0,4).forEach(function(channel) { %><span class="subtle-tag channel-chip"># <%= channel.name %></span><% }) %>
+                </div>
+              </div>
+              <div class="mini-card fancy-mini hover-zoom summary-showcase-card">
+                <span>Takip edilen rol</span>
+                <strong><span id="live-role-count-inline" class="numeric-accent numeric-purple"><%= summary.trackedRoles %></span> rol</strong>
+                <div class="summary-chip-wrap" id="live-role-tags">
+                  <% if (!(selectedRoles || []).length) { %><span class="subtle-tag">Rol seçilmedi</span><% } %>
+                  <% (selectedRoles || []).slice(0,4).forEach(function(role) { %><span class="subtle-tag role-chip-colored" style="--role-color:<%= role.color || '#dfe7f3' %>">@<%= role.name %></span><% }) %>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="table-card premium-table-card leaderboard-wrap">
+          <div class="table-toolbar">
+            <div>
+              <span class="eyebrow">SIRALAMA</span>
+              <h3>Yetkili Liderlik Tablosu</h3>
+            </div>
+            <span class="pill gold"><span id="live-row-count"><%= userRows.length %></span> kayıt</span>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>YETKİLİ ADI</th>
+                <th>ROLLER</th>
+                <th>GÜNLÜK MESAJ</th>
+                <th>TOPLAM MESAJ</th>
+                <th>DURUM</th>
+              </tr>
+            </thead>
+            <tbody id="leaderboard-body">
+              <% if (userRows.length === 0) { %>
+                <tr>
+                  <td colspan="6" class="empty">Henüz takip edilen kullanıcı yok. Ayarlar sayfasından rol ve kanal seçip listeyi güncelle.</td>
+                </tr>
+              <% } %>
+              <% userRows.forEach(function(user) { %>
+                <tr class="user-row <%= user.active ? 'row-active' : 'row-inactive' %>" onclick="window.location='/member/<%= user.userId %>'">
+                  <td><%= user.rank %></td>
+                  <td>
+                    <div class="user-cell">
+                      <% if (user.avatarUrl) { %>
+                        <img src="<%= user.avatarUrl %>" alt="avatar" class="avatar" />
+                      <% } else { %>
+                        <div class="avatar avatar-fallback"><%= (user.displayName || user.username || '?').charAt(0).toUpperCase() %></div>
+                      <% } %>
+                      <div>
+                        <strong class="interactive-name table-name"><%= user.displayName %></strong>
+                        <small><%= user.userId %></small>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="role-stack">
+                      <% if ((user.roleTags || []).length === 0) { %>
+                        <span class="subtle-tag">Rol yok</span>
+                      <% } %>
+                      <% (user.roleTags || []).slice(0, 3).forEach(function(role) { %>
+                        <span class="subtle-tag role-chip-colored" style="--role-color:<%= role.color || '#dfe7f3' %>"><%= role.name %></span>
+                      <% }) %>
+                    </div>
+                  </td>
+                  <td class="accent-red"><%= user.dailyCount %></td>
+                  <td class="accent-blue"><%= user.totalCount %></td>
+                  <td>
+                    <span class="badge <%= user.active ? 'success' : 'danger' %>"><%= user.active ? 'AKTİF' : 'PASİF' %></span>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </section>
+      </section>
+
+      <aside class="dashboard-rail">
+        <section class="card-shell activity-rail static-rail">
+          <div class="rail-head">
+            <div>
+              <span class="eyebrow">MODERATÖRLER</span>
+              <h3>Yetkili listesi</h3>
+            </div>
+            <span class="pill soft" id="live-active-count"><%= memberDirectory.length %> kişi</span>
+          </div>
+          <div class="active-people-list" id="active-people-list">
+            <% const roleMembers = memberDirectory.slice(0, 12); %>
+            <% if (roleMembers.length === 0) { %>
+              <div class="empty-directory">Takip edilen rollerde henüz yetkili görünmüyor.</div>
+            <% } %>
+            <% roleMembers.forEach(function(member) { %>
+              <% const statusKey = member.presenceStatus || 'offline'; %>
+              <% const statusClass = statusKey === 'online' ? 'green' : (statusKey === 'idle' ? 'yellow' : (statusKey === 'dnd' ? 'red' : 'gray')); %>
+              <a class="active-person-card moderator-person-card moderator-person-card-minimal" href="/member/<%= member.userId %>">
+                <div class="member-main">
+                  <% if (member.avatarUrl) { %>
+                    <img src="<%= member.avatarUrl %>" alt="avatar" class="avatar avatar-sm moderator-avatar" />
+                  <% } else { %>
+                    <div class="avatar avatar-sm avatar-fallback moderator-avatar"><%= (member.displayName || member.username || '?').charAt(0).toUpperCase() %></div>
+                  <% } %>
+                  <div class="member-copy minimal-copy">
+                    <strong class="interactive-name table-name moderator-name-clean"><%= member.displayName %></strong>
+                    
+                  </div>
+                </div>
+                <span class="presence-badge <%= statusKey %>">
+                  <span class="status-dot <%= statusClass %>"></span>
+                  <em><%= member.presenceLabel || 'Çevrimdışı' %></em>
+                </span>
+              </a>
+            <% }) %>
+          </div>
+          <p class="rail-note">Durum Discord görünürlüğüne göre güncellenir. Presence intent kapalıysa tüm üyeler çevrimdışı görünebilir.</p>
+        </section>
+
+        <section class="card-shell activity-rail recent-rail">
+          <div class="rail-head">
+            <div>
+              <span class="eyebrow">SON HAREKETLER</span>
+              <h3>Canlı akış</h3>
+            </div>
+          </div>
+          <div class="recent-feed" id="recent-feed">
+            <% const recentItems = (logs && logs.recent ? logs.recent.slice(0, 8) : []); %>
+            <% if (recentItems.length === 0) { %>
+              <div class="empty-directory">Henüz hareket kaydı yok.</div>
+            <% } %>
+            <% recentItems.forEach(function(item) { %>
+              <div class="feed-item">
+                <div class="feed-icon">⚡</div>
+                <div>
+                  <strong><%= item.displayName || item.username || 'Bilinmeyen kullanıcı' %></strong>
+                  <small><%= item.timeLabel %></small>
+                </div>
+              </div>
+            <% }) %>
+          </div>
+        </section>
+      </aside>
+    </div>
+  </main>
+</div>
+<script>
+function confirmPanelReset(text) {
+  const value = window.prompt(text, "");
+  return value === "SIFIRLA";
+}
+  window.addEventListener('load', () => document.body.classList.add('loaded'));
+  document.querySelectorAll('.user-row,.hover-zoom,.active-person-card,.feed-item').forEach((el) => {
+    el.addEventListener('mousemove', () => el.classList.add('is-hovering'));
+    el.addEventListener('mouseleave', () => el.classList.remove('is-hovering'));
+  });
+</script>
+
+<script>
+function esc(str){
+  return String(str ?? '')
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
+}
+
+function renderRoleTags(roleTags){
+  if(!Array.isArray(roleTags) || !roleTags.length) return '<span class="subtle-tag">Rol yok</span>';
+  return roleTags.map(role => {
+    const color = role.color || '#dfe7f3';
+    return `<span class="subtle-tag role-chip-colored" style="--role-color:${esc(color)}">${esc(role.name)}</span>`;
+  }).join('');
+}
+
+function renderRow(member){
+  const avatar = member.avatarUrl
+    ? `<img src="${esc(member.avatarUrl)}" alt="avatar" class="avatar avatar-sm" />`
+    : `<div class="avatar avatar-sm avatar-fallback">${esc((member.displayName || member.username || '?').charAt(0).toUpperCase())}</div>`;
+  const presence = getPresenceMeta(member.presenceStatus || 'offline');
+  const statusClass = (member.presenceStatus || 'offline') === 'online' ? 'success' : ((member.presenceStatus || 'offline') === 'idle' ? 'warning' : ((member.presenceStatus || 'offline') === 'dnd' ? 'danger' : 'muted'));
+  const statusText = member.presenceLabel || presence.label;
+  return `
+    <tr class="hover-row user-row" onclick="window.location='/member/${esc(member.userId)}'">
+      <td>${member.rank || member.index || ''}</td>
+      <td>
+        <div class="member-cell">
+          ${avatar}
+          <div>
+            <strong class="interactive-name table-name">${esc(member.displayName)}</strong>
+            <small>${esc(member.userId)}</small>
+          </div>
+        </div>
+      </td>
+      <td><div class="role-stack">${renderRoleTags(member.roleTags)}</div></td>
+      <td class="metric-cell daily">${member.dailyCount}</td>
+      <td class="metric-cell total">${member.totalCount}</td>
+      <td><span class="badge ${statusClass}">${statusText}</span></td>
+    </tr>`;
+}
+
+function getPresenceMeta(status){
+  if(status === 'online') return { dot:'green', label:'Çevrimiçi' };
+  if(status === 'idle') return { dot:'yellow', label:'Boşta' };
+  if(status === 'dnd') return { dot:'red', label:'Rahatsız Etmeyin' };
+  return { dot:'gray', label:'Çevrimdışı' };
+}
+
+function renderRoleBadges(roleTags, limit = 2){
+  if(!Array.isArray(roleTags) || !roleTags.length) return '<span class="subtle-tag">Yetkili rolü</span>';
+  return roleTags.slice(0, limit).map(role => {
+    const color = role.color || '#dfe7f3';
+    return `<span class="subtle-tag role-chip-colored role-chip-mini" style="--role-color:${esc(color)}">@${esc(role.name)}</span>`;
+  }).join('');
+}
+
+function renderSummaryTags(items, kind){
+  if(!Array.isArray(items) || !items.length){
+    return `<span class="subtle-tag">${kind === 'channel' ? 'Kanal seçilmedi' : 'Rol seçilmedi'}</span>`;
+  }
+  return items.slice(0, 6).map((item) => {
+    if(kind === 'channel') return `<span class="subtle-tag channel-chip"># ${esc(item.name)}</span>`;
+    const color = item.color || '#dfe7f3';
+    return `<span class="subtle-tag role-chip-colored" style="--role-color:${esc(color)}">@${esc(item.name)}</span>`;
+  }).join('');
+}
+
+function renderModeratorPerson(member){
+  const avatar = member.avatarUrl
+    ? `<img src="${esc(member.avatarUrl)}" alt="avatar" class="avatar avatar-sm" />`
+    : `<div class="avatar avatar-sm avatar-fallback">${esc((member.displayName || member.username || '?').charAt(0).toUpperCase())}</div>`;
+  const presence = getPresenceMeta(member.presenceStatus || 'offline');
+  return `
+    <a class="active-person-card moderator-person-card" href="/member/${esc(member.userId)}">
+      <div class="member-main">
+        ${avatar}
+        <div class="member-copy">
+          <strong class="interactive-name table-name">${esc(member.displayName)}</strong>
+          <div class="role-stack compact-role-stack">${renderRoleBadges(member.roleTags, 2)}</div>
+        </div>
+      </div>
+      <span class="presence-badge ${esc(member.presenceStatus || 'offline')}">
+        <span class="status-dot ${presence.dot}"></span>
+        <em>${esc(member.presenceLabel || presence.label)}</em>
+      </span>
+    </a>`;
+}
+
+function renderFeedItem(item){
+  const name = item.displayName || item.username || 'Bilinmeyen kullanıcı';
+  return `
+    <div class="feed-item">
+      <div class="feed-icon">⚡</div>
+      <div>
+        <strong>${esc(name)}</strong>
+        <small>${esc(item.timeLabel || '')}</small>
+      </div>
+    </div>`;
+}
+
+async function refreshDashboard(){
+  try{
+    const res = await fetch('/api/live-dashboard', { headers: { 'x-requested-with': 'fetch' } });
+    const data = await res.json();
+    if(!data.ok) return;
+    document.getElementById('live-total-staff').textContent = data.summary.totalStaff;
+    document.getElementById('live-daily-messages').textContent = data.summary.dailyMessages;
+    document.getElementById('live-total-messages').textContent = data.summary.totalMessages;
+    document.getElementById('live-active-name').textContent = data.summary.topActive;
+    document.getElementById('live-active-name-inline').textContent = data.summary.topActive;
+    document.getElementById('live-inactive-count').textContent = data.summary.inactiveCount;
+    document.getElementById('live-inactive-count-inline').textContent = data.summary.inactiveCount;
+    document.getElementById('live-row-count').textContent = (data.userRows || []).length;
+    document.getElementById('live-server-time').textContent = data.serverTime;
+
+    const c = document.getElementById('live-channel-count'); if(c) c.textContent = data.summary.trackedChannels;
+    const ci = document.getElementById('live-channel-count-inline'); if(ci) ci.textContent = data.summary.trackedChannels;
+    const r = document.getElementById('live-role-count'); if(r) r.textContent = data.summary.trackedRoles;
+    const ri = document.getElementById('live-role-count-inline'); if(ri) ri.textContent = data.summary.trackedRoles;
+    const s = document.getElementById('live-discord-status'); if(s) s.textContent = data.discordConnected ? 'Bağlı' : 'Kapalı';
+    const channelTags = document.getElementById('live-channel-tags');
+    if(channelTags) channelTags.innerHTML = renderSummaryTags(data.selectedChannels, 'channel');
+    const roleTags = document.getElementById('live-role-tags');
+    if(roleTags) roleTags.innerHTML = renderSummaryTags(data.selectedRoles, 'role');
+
+    const tbody = document.getElementById('leaderboard-body');
+    if(tbody && Array.isArray(data.userRows)){
+      tbody.innerHTML = data.userRows.length ? data.userRows.map(renderRow).join('') : '<tr><td colspan="6" class="empty">Henüz takip edilen kullanıcı yok.</td></tr>';
+    }
+
+    const activeList = document.getElementById('active-people-list');
+    const roleMembers = Array.isArray(data.memberDirectory) ? data.memberDirectory.slice(0,8) : [];
+    const activeCount = document.getElementById('live-active-count');
+    if(activeCount) activeCount.textContent = `${Array.isArray(data.memberDirectory) ? data.memberDirectory.length : 0} kişi`;
+    if(activeList){
+      activeList.innerHTML = roleMembers.length ? roleMembers.map(renderModeratorPerson).join('') : '<div class="empty-directory">Takip edilen rollerde henüz yetkili görünmüyor.</div>';
+    }
+
+    const recentFeed = document.getElementById('recent-feed');
+    const recentItems = Array.isArray(data.logs?.recent) ? data.logs.recent.slice(0,8) : [];
+    if(recentFeed){
+      recentFeed.innerHTML = recentItems.length ? recentItems.map(renderFeedItem).join('') : '<div class="empty-directory">Henüz hareket kaydı yok.</div>';
+    }
+  }catch(e){}
+}
+setInterval(refreshDashboard, 5000);
+</script>
+
+</body>
+</html>

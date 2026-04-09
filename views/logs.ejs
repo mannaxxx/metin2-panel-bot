@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Log Merkezi</title>
+  <link rel="stylesheet" href="/public/css/style.css" />
+</head>
+<body class="with-loader">
+<div class="page-loader"><div class="loader-orb"></div><span>Log merkezi yükleniyor...</span></div>
+<div class="layout fade-shell">
+  <%- include('partials') %>
+  <main class="main">
+    <div class="page-header between">
+      <div>
+        <div class="eyebrow">LOG MERKEZİ</div>
+        <h1>Log Merkezi</h1>
+        <p>Son hareketleri, günlük mesaj sayılarını ve haftalık liderleri tek ekranda takip et.</p>
+      </div>
+      <div class="header-actions">
+        <a href="/" class="btn btn-secondary">← Panele Dön</a>
+        <form method="post" action="/logs/reset" onsubmit="return confirmPanelReset('Log panelindeki tüm kayıtlar sıfırlanacak. Devam etmek için SIFIRLA yaz.');">
+          <button class="btn btn-danger" type="submit">🗑 Logları Sıfırla</button>
+        </form>
+      </div>
+    </div>
+
+    <% if (message) { %>
+      <div class="alert <%= messageType === 'error' ? 'error' : 'success' %>"><%= message %></div>
+    <% } %>
+
+    <section class="log-page-grid modern-log-grid three-rows">
+      <section class="table-card premium-table-card log-board-card">
+        <div class="table-toolbar">
+          <div>
+            <span class="eyebrow">SON HAREKETLER</span>
+            <h3>Anlık Aktivite Akışı</h3>
+          </div>
+          <span class="pill gold"><%= logs.recent.length %> kayıt</span>
+        </div>
+        <div class="activity-feed large-feed">
+          <% if (!logs.recent.length) { %>
+            <div class="empty-directory">Henüz hareket kaydı oluşmadı.</div>
+          <% } %>
+          <% logs.recent.forEach(function(item) { %>
+            <div class="activity-item hover-zoom">
+              <div class="activity-mark">💬</div>
+              <div>
+                <strong><%= item.displayName %></strong>
+                <p><%= item.text %></p>
+                <small><%= item.timeLabel %></small>
+              </div>
+            </div>
+          <% }) %>
+        </div>
+      </section>
+
+      <section class="table-card premium-table-card weekly-board-card">
+        <div class="table-toolbar">
+          <div>
+            <span class="eyebrow">HAFTALIK TOP</span>
+            <h3>Bu Haftanın Liderleri</h3>
+          </div>
+          <span class="pill soft">Top 5</span>
+        </div>
+        <div class="weekly-top-list">
+          <% if (!logs.weeklyTop.length) { %>
+            <div class="empty-directory">Bu hafta henüz veri oluşmadı.</div>
+          <% } %>
+          <% logs.weeklyTop.forEach(function(item, index) { %>
+            <a class="week-top-card hover-zoom" href="/member/<%= item.userId %>">
+              <div class="week-top-rank">#<%= index + 1 %></div>
+              <div class="week-top-user">
+                <% if (item.avatarUrl) { %>
+                  <img src="<%= item.avatarUrl %>" alt="avatar" class="avatar avatar-sm" />
+                <% } else { %>
+                  <div class="avatar avatar-sm avatar-fallback"><%= (item.displayName || item.username || '?').charAt(0).toUpperCase() %></div>
+                <% } %>
+                <div>
+                  <strong><%= item.displayName %></strong>
+                  <small><%= item.weeklyCount %> haftalık mesaj</small>
+                </div>
+              </div>
+              <span class="badge <%= item.active ? 'success' : 'danger' %>"><%= item.active ? 'AKTİF' : 'PASİF' %></span>
+            </a>
+          <% }) %>
+        </div>
+      </section>
+
+      <section class="table-card premium-table-card daily-report-card full-span">
+        <div class="table-toolbar">
+          <div>
+            <span class="eyebrow">GÜNLÜK RAPOR</span>
+            <h3>Bugün kim kaç mesaj attı</h3>
+          </div>
+          <span class="pill gold"><%= logs.dailyTotal || 0 %> mesaj</span>
+        </div>
+        <div class="daily-report-table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Yetkili</th>
+                <th>Günlük Mesaj</th>
+                <th>Haftalık Mesaj</th>
+                <th>Genel Toplam</th>
+                <th>Durum</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% if (!logs.dailyTop.length) { %>
+                <tr><td colspan="6" class="empty">Bugün için henüz mesaj verisi oluşmadı.</td></tr>
+              <% } %>
+              <% logs.dailyTop.forEach(function(item, index) { %>
+                <tr>
+                  <td><%= index + 1 %></td>
+                  <td>
+                    <a class="daily-user-link" href="/member/<%= item.userId %>">
+                      <% if (item.avatarUrl) { %>
+                        <img src="<%= item.avatarUrl %>" alt="avatar" class="avatar avatar-xs" />
+                      <% } else { %>
+                        <span class="avatar avatar-xs avatar-fallback"><%= (item.displayName || item.username || '?').charAt(0).toUpperCase() %></span>
+                      <% } %>
+                      <strong><%= item.displayName %></strong>
+                    </a>
+                  </td>
+                  <td class="accent-blue"><%= item.dailyCount %></td>
+                  <td><%= item.weeklyCount %></td>
+                  <td><%= item.totalCount %></td>
+                  <td><span class="badge <%= item.active ? 'success' : 'danger' %>"><%= item.presenceLabel || (item.active ? 'Çevrimiçi' : 'Çevrimdışı') %></span></td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+  </main>
+</div>
+<script>
+function confirmPanelReset(text) {
+  const value = window.prompt(text, "");
+  return value === "SIFIRLA";
+}
+window.addEventListener('load',()=>document.body.classList.add('loaded'));
+</script>
+</body>
+</html>

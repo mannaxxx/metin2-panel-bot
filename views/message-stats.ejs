@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mesaj Takip - <%= config.panelTitle %></title>
+  <link rel="stylesheet" href="/public/css/style.css" />
+</head>
+<body class="with-loader">
+<div class="page-loader"><div class="loader-orb"></div><span>Mesaj takip paneli yükleniyor...</span></div>
+<div class="layout fade-shell">
+  <%- include('partials') %>
+
+  <main class="main">
+    <div class="page-header between modern-headline">
+      <div>
+        <span class="eyebrow">MESAJ TAKİP PANELİ</span>
+        <h1>Ödeme için mesaj özeti</h1>
+        <p>Takip edilen rollerdeki yetkililerin bugün, dün, haftalık ve aylık mesaj sayılarını tek ekranda gör.</p>
+      </div>
+      <div class="header-actions">
+        <a href="/settings" class="btn btn-secondary">⚙ Ayarlar</a>
+        <a href="/logs" class="btn btn-secondary">📝 Loglar</a>
+        <form method="post" action="/message-stats/reset" onsubmit="return confirmPanelReset('Mesaj Takip panelindeki tüm veriler sıfırlanacak. Devam etmek için SIFIRLA yaz.');">
+          <button class="btn btn-danger" type="submit">🗑 Mesaj Takibi Sıfırla</button>
+        </form>
+      </div>
+    </div>
+
+    <% if (message) { %>
+      <div class="alert <%= messageType === 'error' ? 'error' : 'success' %>"><%= message %></div>
+    <% } %>
+
+    <section class="cards-grid premium-grid modern-stats-grid">
+      <div class="stat-card premium-card hover-zoom stat-card-glow blue-glow">
+        <div class="stat-head"><div class="stat-title">TAKİP EDİLEN MODERATÖR</div><div class="stat-icon blue">👥</div></div>
+        <div class="stat-value"><%= trackerData.summary.trackedModerators %></div>
+        <div class="stat-sub">Seçili roller üzerinden otomatik sayılır</div>
+      </div>
+      <div class="stat-card premium-card hover-zoom stat-card-glow yellow-glow">
+        <div class="stat-head"><div class="stat-title">BUGÜN</div><div class="stat-icon yellow">☀️</div></div>
+        <div class="stat-value accent-gold"><%= trackerData.summary.todayMessages %></div>
+        <div class="stat-sub">Bugün atılan toplam mesaj</div>
+      </div>
+      <div class="stat-card premium-card hover-zoom stat-card-glow red-glow">
+        <div class="stat-head"><div class="stat-title">DÜN</div><div class="stat-icon red">🌙</div></div>
+        <div class="stat-value accent-red"><%= trackerData.summary.yesterdayMessages %></div>
+        <div class="stat-sub">Düne ait toplam mesaj</div>
+      </div>
+      <div class="stat-card premium-card hover-zoom stat-card-glow gold-glow">
+        <div class="stat-head"><div class="stat-title">HAFTALIK / AYLIK</div><div class="stat-icon gold">📈</div></div>
+        <div class="stat-value"><%= trackerData.summary.weeklyMessages %> / <%= trackerData.summary.monthlyMessages %></div>
+        <div class="stat-sub">Ödeme kontrolü için hızlı özet</div>
+      </div>
+    </section>
+
+    <section class="table-card premium-table-card leaderboard-wrap">
+      <div class="table-toolbar">
+        <div>
+          <span class="eyebrow">DETAYLI RAPOR</span>
+          <h3>Yetkili mesaj istatistikleri</h3>
+        </div>
+        <span class="pill gold"><%= trackerData.rows.length %> kişi</span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>YETKİLİ</th>
+            <th>ROLLER</th>
+            <th>BUGÜN</th>
+            <th>DÜN</th>
+            <th>HAFTALIK</th>
+            <th>AYLIK</th>
+            <th>DURUM</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (!trackerData.rows.length) { %>
+            <tr>
+              <td colspan="8" class="empty">Henüz mesaj verisi yok. Ayarlardan takip edilen rol ve kanalları seçtikten sonra sistem otomatik saymaya başlar.</td>
+            </tr>
+          <% } %>
+          <% trackerData.rows.forEach(function(user) { %>
+            <tr class="user-row <%= user.presenceStatus === 'offline' ? 'row-inactive' : 'row-active' %>">
+              <td><%= user.rank %></td>
+              <td>
+                <div class="user-cell">
+                  <% if (user.avatarUrl) { %>
+                    <img src="<%= user.avatarUrl %>" alt="avatar" class="avatar" />
+                  <% } else { %>
+                    <div class="avatar avatar-fallback"><%= (user.displayName || user.username || '?').charAt(0).toUpperCase() %></div>
+                  <% } %>
+                  <div>
+                    <strong class="interactive-name table-name"><%= user.displayName %></strong>
+                    <small><%= user.userId %></small>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <div class="role-stack">
+                  <% if (!(user.roleTags || []).length) { %>
+                    <span class="subtle-tag">Rol yok</span>
+                  <% } %>
+                  <% (user.roleTags || []).slice(0, 3).forEach(function(role) { %>
+                    <span class="subtle-tag role-chip-colored" style="--role-color:<%= role.color || '#dfe7f3' %>"><%= role.name %></span>
+                  <% }) %>
+                </div>
+              </td>
+              <td class="accent-blue"><%= user.todayCount %></td>
+              <td class="accent-red"><%= user.yesterdayCount %></td>
+              <td class="accent-gold"><%= user.weeklyCount %></td>
+              <td class="accent-purple"><%= user.monthlyCount %></td>
+              <td>
+                <span class="presence-badge <%= user.presenceStatus %>">
+                  <span class="status-dot <%= user.presenceStatus === 'online' ? 'green' : user.presenceStatus === 'idle' ? 'yellow' : user.presenceStatus === 'dnd' ? 'red' : 'gray' %>"></span>
+                  <em><%= user.presenceLabel %></em>
+                </span>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </section>
+  </main>
+</div>
+<script>
+function confirmPanelReset(text) {
+  const value = window.prompt(text, "");
+  return value === "SIFIRLA";
+}
+window.addEventListener('load',()=>document.body.classList.add('loaded'));
+</script>
+</body>
+</html>

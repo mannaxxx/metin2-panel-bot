@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Panele Giriş</title>
+  <link rel="stylesheet" href="/public/css/style.css" />
+</head>
+<body class="login-body secure-login-body arkantos-login-body">
+  <div class="login-scene-overlay"></div>
+  <div class="login-shell arkantos-login-shell">
+    <section class="login-card secure-login-card arkantos-login-card">
+      <div class="arkantos-brand-wrap">
+        <h1 class="arkantos-login-title">ARKANTOS2 YÖNETİM PANELİ</h1>
+        <p class="arkantos-login-subtitle">Güvenli giriş, modern yönetim ve yetkili kontrol ekranı. Yetkili şifrenizi girerek devam edin.</p>
+      </div>
+      <form method="post" action="/login" class="login-form arkantos-login-form" id="login-form">
+        <label>Kullanıcı Doğrulama</label>
+        <input type="password" name="password" placeholder="Şifrenizi girin" required <% if (blocked) { %>disabled<% } %> />
+        <% if (error) { %>
+          <div class="alert error arkantos-login-alert"><%= error %></div>
+        <% } %>
+        <button type="submit" class="btn btn-primary full arkantos-login-button" id="login-submit" <% if (blocked) { %>disabled<% } %>>Giriş Yap</button>
+      </form>
+      <div class="login-hint arkantos-login-hint">Bu alana yalnızca yetkili kullanıcılar erişebilir. 5 hatalı denemede geçici koruma devreye girer.</div>
+    </section>
+  </div>
+
+  <div id="fullscreen-loader" class="fullscreen-loader">
+    <div class="loader-content">
+      <div class="logo-text">ARKANTOS2</div>
+      <div class="spinner"></div>
+      <div class="loading-text">Yetkilendiriliyor...</div>
+      <div class="progress-bar"><div class="progress"></div></div>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('login-form').addEventListener('submit', function () {
+      const loader = document.getElementById('fullscreen-loader');
+      const btn = document.getElementById('login-submit');
+      btn.disabled = true;
+      btn.textContent = 'Giriş Yapılıyor...';
+      loader.style.display = 'flex';
+    });
+  </script>
+</body>
+</html>

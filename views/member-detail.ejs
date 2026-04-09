@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= member.displayName %> - Profil</title>
+  <link rel="stylesheet" href="/public/css/style.css" />
+</head>
+<body class="with-loader">
+<div class="page-loader"><div class="loader-orb"></div><span>Profil yükleniyor...</span></div>
+<div class="layout fade-shell">
+  <%- include('partials') %>
+  <main class="main">
+    <div class="page-header between">
+      <div>
+        <div class="eyebrow">KULLANICI DETAYI</div>
+        <h1><%= member.displayName %></h1>
+        <p>Premium profil kartı, rozetler, aktivite puanı ve son hareket geçmişi</p>
+      </div>
+      <a href="/" class="btn btn-secondary">← Panele Dön</a>
+    </div>
+
+    <section class="profile-hero card-shell hover-zoom">
+      <div class="profile-main">
+        <% if (member.avatarUrl) { %>
+          <img src="<%= member.avatarUrl %>" alt="avatar" class="profile-avatar" />
+        <% } else { %>
+          <div class="profile-avatar avatar-fallback"><%= (member.displayName || member.username || '?').charAt(0).toUpperCase() %></div>
+        <% } %>
+        <div>
+          <h2><%= member.displayName %></h2>
+          <p>@<%= member.username %> • <%= member.userId %></p>
+          <div class="role-stack large">
+            <% if ((member.roleTags || []).length === 0) { %>
+              <span class="subtle-tag">Rol yok</span>
+            <% } %>
+            <% (member.roleTags || []).forEach(function(role) { %>
+              <span class="subtle-tag role-chip-colored" style="--role-color:<%= role.color || '#dfe7f3' %>"><%= role.name %></span>
+            <% }) %>
+          </div>
+        </div>
+      </div>
+      <div class="profile-status <%= member.active ? 'online' : 'offline' %>">
+        <span class="status-dot <%= member.active ? 'green' : 'red' %>"></span>
+        <strong><%= member.active ? 'AKTİF' : 'PASİF' %></strong>
+        <small><%= member.lastMessageAt ? new Date(member.lastMessageAt).toLocaleString('tr-TR') : 'Henüz mesaj yok' %></small>
+      </div>
+    </section>
+
+    
+    <section class="cards-grid premium-grid profile-grid detail-grid-4">
+      <div class="stat-card premium-card hover-zoom">
+        <div class="stat-title">GÜNLÜK MESAJ</div>
+        <div class="stat-value"><%= member.dailyCount %></div>
+        <div class="stat-sub">Bugün 00:00'dan beri</div>
+      </div>
+      <div class="stat-card premium-card hover-zoom">
+        <div class="stat-title">HAFTALIK MESAJ</div>
+        <div class="stat-value"><%= member.weeklyCount %></div>
+        <div class="stat-sub">Bu hafta gönderilen mesaj</div>
+      </div>
+      <div class="stat-card premium-card hover-zoom">
+        <div class="stat-title">TOPLAM MESAJ</div>
+        <div class="stat-value"><%= member.totalCount %></div>
+        <div class="stat-sub">Tüm zamanlar sayısı</div>
+      </div>
+      <div class="stat-card premium-card hover-zoom role-card-detail">
+        <div class="stat-title">SON AKTİFLİK</div>
+        <div class="role-list-text"><%= member.lastMessageAt ? new Date(member.lastMessageAt).toLocaleString('tr-TR') : 'Henüz mesaj yok' %></div>
+        <div class="stat-sub"><%= member.active ? 'Şu an aktif' : ((member.activeMinutesAgo ?? 0) + ' dakika önce aktifti') %></div>
+      </div>
+    </section>
+
+    <section class="detail-duo-grid">
+      <section class="table-card premium-table-card detail-card-block">
+        <div class="table-toolbar">
+          <div>
+            <span class="eyebrow">ROL ETİKETLERİ</span>
+            <h3>Takip Rolleri</h3>
+          </div>
+        </div>
+        <div class="role-stack large detail-roles-wrap">
+          <% if ((member.roleTags || []).length === 0) { %>
+            <span class="subtle-tag">Rol yok</span>
+          <% } %>
+          <% (member.roleTags || []).forEach(function(role) { %>
+            <span class="subtle-tag role-chip-colored role-chip-large" style="--role-color:<%= role.color || '#dfe7f3' %>"><%= role.name %></span>
+          <% }) %>
+        </div>
+      </section>
+
+      <section class="table-card premium-table-card detail-card-block">
+        <div class="table-toolbar">
+          <div>
+            <span class="eyebrow">SON HAREKETLER</span>
+            <h3>Profil Aktivite Akışı</h3>
+          </div>
+        </div>
+        <div class="activity-feed">
+          <% if (!memberActivities.length) { %>
+            <div class="empty-directory">Bu kullanıcı için henüz hareket kaydı yok.</div>
+          <% } %>
+          <% memberActivities.forEach(function(item) { %>
+            <div class="activity-item hover-zoom">
+              <div class="activity-mark">⚡</div>
+              <div>
+                <strong><%= item.text %></strong>
+                <small><%= item.timeLabel %></small>
+              </div>
+            </div>
+          <% }) %>
+        </div>
+      </section>
+    </section>
+
+  </main>
+</div>
+<script>window.addEventListener('load',()=>document.body.classList.add('loaded'));</script>
+</body>
+</html>

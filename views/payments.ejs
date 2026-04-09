@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Yatırılan Ödeme - <%= config.panelTitle %></title>
+  <link rel="stylesheet" href="/public/css/style.css" />
+  <style>
+    .history-detail-trigger{display:block;width:100%;background:none;border:none;padding:0;color:inherit;text-align:left;cursor:pointer}
+    .history-detail-trigger:hover .table-name{transform:translateX(2px)}
+    .payment-detail-overlay{position:fixed;inset:0;z-index:1200;display:grid;place-items:center;padding:24px}
+    .payment-detail-overlay[hidden]{display:none !important}
+    .payment-detail-backdrop{position:absolute;inset:0;background:rgba(3,7,18,.72);backdrop-filter:blur(6px)}
+    .payment-detail-modal{position:relative;z-index:1;width:min(920px,96vw);max-height:86vh;overflow:auto;background:linear-gradient(180deg,rgba(5,12,28,.96),rgba(4,10,24,.98));border:1px solid rgba(99,179,237,.18);border-radius:24px;box-shadow:0 30px 80px rgba(0,0,0,.55);padding:24px}
+    .payment-detail-header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:18px}
+    .detail-close-btn{border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#fff;border-radius:12px;padding:10px 12px;cursor:pointer}
+    .detail-summary-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:18px}
+    .detail-summary-strip>div{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:14px 16px}
+    .detail-summary-strip span{display:block;font-size:12px;color:#9fb0c8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
+    .detail-summary-strip strong{display:block;font-size:22px;color:#fff}
+    .detail-summary-strip small{display:block;color:#93a4bf;margin-top:4px}
+    .detail-table-wrap{border:1px solid rgba(255,255,255,.08);border-radius:18px;overflow:hidden;background:rgba(255,255,255,.02)}
+    .detail-payments-table{width:100%;border-collapse:collapse}
+    .detail-payments-table th,.detail-payments-table td{padding:14px 12px;border-bottom:1px solid rgba(255,255,255,.06);text-align:left}
+    .detail-payments-table th{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#93a4bf;background:rgba(255,255,255,.03)}
+    .detail-payments-table tr:last-child td{border-bottom:none}
+    .detail-payments-table tbody tr:hover{background:rgba(255,255,255,.03)}
+    .detail-mini-pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:6px 10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:#dce7f7;font-size:12px;font-weight:700;margin-right:6px;margin-bottom:6px}
+    .history-actions{display:flex;justify-content:flex-end}
+    .empty-detail{padding:20px;border-radius:16px;background:rgba(255,255,255,.03);border:1px dashed rgba(255,255,255,.12);color:#b7c7db}
+    body.modal-open{overflow:hidden}
+    @media (max-width: 900px){.detail-payments-table{display:block;overflow-x:auto;white-space:nowrap}.payment-detail-modal{padding:18px}}
+  </style>
+</head>
+<body class="with-loader">
+<div class="page-loader"><div class="loader-orb"></div><span>Ödeme paneli yükleniyor...</span></div>
+<div class="layout fade-shell">
+  <%- include('partials') %>
+
+  <main class="main">
+    <div class="page-header between modern-headline">
+      <div>
+        <span class="eyebrow">YATIRILAN ÖDEME PANELİ</span>
+        <h1>EP / MP ödeme takibi</h1>
+        <p>Rolü sayılan aktif yetkililer burada görünür. Rolü alınan kişi bekleyen listeden ve diğer panellerden otomatik kaldırılır; geçmiş ödeme kaydı saklanır.</p>
+        <small class="muted">Oyun içi kullanıcı adı kanalı: <strong><%= (channels || []).find((item) => item.id === config.usernameSourceChannelId)?.name || 'Seçilmedi' %></strong></small>
+      </div>
+      <div class="header-actions">
+        <a href="/message-stats" class="btn btn-secondary">📊 Mesaj Takip</a>
+        <a href="/settings" class="btn btn-secondary">⚙ Ayarlar</a>
+        <form method="post" action="/payments/reset" onsubmit="return confirmPanelReset('Yatırılan Ödeme panelindeki tüm kayıtları sıfırlamak için SIFIRLA yaz.');">
+          <button class="btn btn-danger" type="submit">🗑 Ödemeleri Sıfırla</button>
+        </form>
+      </div>
+    </div>
+
+    <% if (message) { %>
+      <div class="flash-card <%= messageType === 'error' ? 'error' : 'success' %>"><%= message %></div>
+    <% } %>
+
+    <section class="cards-grid premium-grid modern-stats-grid payment-summary-grid">
+      <div class="stat-card premium-card hover-zoom stat-card-glow blue-glow">
+        <div class="stat-head"><div class="stat-title">BEKLEYEN ÖDEME</div><div class="stat-icon blue">🧾</div></div>
+        <div class="stat-value accent-blue"><%= paymentData.summary.pendingCount %></div>
+        <div class="stat-sub">Ödemesi henüz yapılmayan yetkililer</div>
+      </div>
+      <div class="stat-card premium-card hover-zoom stat-card-glow green-glow">
+        <div class="stat-head"><div class="stat-title">ÖDENEN KİŞİ</div><div class="stat-icon green">✅</div></div>
+        <div class="stat-value accent-green"><%= paymentData.summary.settledCount %></div>
+        <div class="stat-sub">Bekleyen listeden çıkarılan yetkili</div>
+      </div>
+      <div class="stat-card premium-card hover-zoom stat-card-glow gold-glow">
+        <div class="stat-head"><div class="stat-title">TOPLAM EP</div><div class="stat-icon gold">💎</div></div>
+        <div class="stat-value accent-gold"><%= paymentData.summary.totalEp %></div>
+        <div class="stat-sub">Tüm zamanlarda kaydedilen EP</div>
+      </div>
+      <div class="stat-card premium-card hover-zoom stat-card-glow purple-glow">
+        <div class="stat-head"><div class="stat-title">TOPLAM MP</div><div class="stat-icon purple">✨</div></div>
+        <div class="stat-value accent-purple"><%= paymentData.summary.totalMp %></div>
+        <div class="stat-sub">Tüm zamanlarda kaydedilen MP</div>
+      </div>
+    </section>
+
+    <section class="table-card premium-table-card leaderboard-wrap">
+      <div class="table-toolbar">
+        <div>
+          <span class="eyebrow">BEKLEYENLER</span>
+          <h3>Ödemesi yapılmayan yetkililer</h3>
+        </div>
+        <span class="pill red"><%= paymentData.pendingRows.length %> kişi</span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>YETKİLİ</th>
+            <th>OYUN ADI</th>
+            <th>ROLLER</th>
+            <th>BUGÜN / DÜN</th>
+            <th>HAFTA / AY</th>
+            <th>DURUM</th>
+            <th>ÖDEME GİR</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (!paymentData.pendingRows.length) { %>
+            <tr>
+              <td colspan="7" class="empty">Şu an bekleyen ödeme yok. Ödeme yapılanlar aşağıdaki geçmiş bölümünde tutulur.</td>
+            </tr>
+          <% } %>
+          <% paymentData.pendingRows.forEach(function(user) { %>
+            <tr class="user-row <%= user.presenceStatus === 'offline' ? 'row-inactive' : 'row-active' %>">
+              <td>
+                <div class="user-cell">
+                  <% if (user.avatarUrl) { %>
+                    <img src="<%= user.avatarUrl %>" alt="avatar" class="avatar" />
+                  <% } else { %>
+                    <div class="avatar avatar-fallback"><%= (user.displayName || user.username || '?').charAt(0).toUpperCase() %></div>
+                  <% } %>
+                  <div>
+                    <strong class="interactive-name table-name"><%= user.displayName %></strong>
+                    <small><%= user.userId %></small>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <strong class="accent-blue"><%= user.gameName || '-' %></strong>
+                <small class="muted block-helper">Özel kanaldan alınır</small>
+              </td>
+              <td>
+                <div class="role-stack">
+                  <% if (!(user.roleTags || []).length) { %>
+                    <span class="subtle-tag">Rol yok</span>
+                  <% } %>
+                  <% (user.roleTags || []).slice(0, 3).forEach(function(role) { %>
+                    <span class="subtle-tag role-chip-colored" style="--role-color:<%= role.color || '#dfe7f3' %>"><%= role.name %></span>
+                  <% }) %>
+                </div>
+              </td>
+              <td><span class="accent-blue"><%= user.todayCount %></span> / <span class="accent-red"><%= user.yesterdayCount %></span></td>
+              <td><span class="accent-gold"><%= user.weeklyCount %></span> / <span class="accent-purple"><%= user.monthlyCount %></span></td>
+              <td>
+                <span class="presence-badge <%= user.presenceStatus %>">
+                  <span class="status-dot <%= user.presenceStatus === 'online' ? 'green' : user.presenceStatus === 'idle' ? 'yellow' : user.presenceStatus === 'dnd' ? 'red' : 'gray' %>"></span>
+                  <em><%= user.presenceLabel %></em>
+                </span>
+              </td>
+              <td>
+                <form action="/payments/settle" method="POST" class="payment-form-inline">
+                  <input type="hidden" name="userId" value="<%= user.userId %>" />
+                  <input type="number" min="0" step="1" name="epAmount" placeholder="EP" class="payment-input" />
+                  <input type="number" min="0" step="1" name="mpAmount" placeholder="MP" class="payment-input" />
+                  <button type="submit" class="btn btn-primary btn-small">Ödeme Yapıldı</button>
+                </form>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="table-card premium-table-card leaderboard-wrap compact-history-card">
+      <div class="table-toolbar stacked-toolbar">
+        <div>
+          <span class="eyebrow">ÖDEME GEÇMİŞİ</span>
+          <h3>Kime kaç EP / MP yatırıldı</h3>
+          <p class="muted">Discord adı veya oyun içi kullanıcı adı ile ara. Kayıtlar kişi bazında tek satırda özetlenir.</p>
+        </div>
+        <form method="GET" action="/payments" class="search-inline-form">
+          <input type="text" name="q" value="<%= paymentData.filters.q %>" placeholder="Örn: DM Hamza veya oyun adı" class="search-input" />
+          <button type="submit" class="btn btn-secondary btn-small">Ara</button>
+          <% if (paymentData.filters.q) { %>
+            <a href="/payments" class="btn btn-ghost btn-small">Temizle</a>
+          <% } %>
+        </form>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>YETKİLİ</th>
+            <th>OYUN ADI</th>
+            <th>TOPLAM EP</th>
+            <th>TOPLAM MP</th>
+            <th>ÖDEME SAYISI</th>
+            <th>SON ÖDEME</th>
+            <th>İŞLEM</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (!paymentData.historySummary.length) { %>
+            <tr>
+              <td colspan="7" class="empty">Arama sonucuna uygun ödeme kaydı yok.</td>
+            </tr>
+          <% } %>
+          <% paymentData.historySummary.forEach(function(item, idx) { %>
+            <tr class="history-summary-row" data-detail-target="payment-detail-<%= idx %>">
+              <td>
+                <button type="button" class="history-detail-trigger" data-detail-target="payment-detail-<%= idx %>">
+                  <div class="user-cell">
+                    <% if (item.avatarUrl) { %>
+                      <img src="<%= item.avatarUrl %>" alt="avatar" class="avatar" />
+                    <% } else { %>
+                      <div class="avatar avatar-fallback"><%= (item.displayName || item.username || '?').charAt(0).toUpperCase() %></div>
+                    <% } %>
+                    <div>
+                      <strong class="table-name"><%= item.displayName %></strong>
+                      <small><%= item.username || item.userId %></small>
+                    </div>
+                  </div>
+                </button>
+              </td>
+              <td><strong class="accent-blue"><%= item.gameName || '-' %></strong></td>
+              <td class="accent-gold"><%= item.totalEp %></td>
+              <td class="accent-purple"><%= item.totalMp %></td>
+              <td><span class="subtle-tag"><%= item.paymentCount %> kayıt</span></td>
+              <td><%= new Date(item.lastPaymentAt).toLocaleString('tr-TR') %></td>
+              <td>
+                <div class="history-actions">
+                  <form action="/payments/reopen/<%= item.userId %>" method="POST">
+                    <button type="submit" class="btn btn-ghost btn-small">Tekrar bekleyenlere al</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </section>
+    <div class="payment-detail-overlay" id="paymentDetailOverlay" hidden>
+      <div class="payment-detail-backdrop" data-close-payment-detail></div>
+      <div class="payment-detail-modal" role="dialog" aria-modal="true" aria-labelledby="paymentDetailTitle">
+        <div class="payment-detail-header">
+          <div>
+            <span class="eyebrow">ÖDEME DETAYI</span>
+            <h3 id="paymentDetailTitle">Yetkili ödeme geçmişi</h3>
+            <p class="muted">Seçtiğin kullanıcının tarih tarih EP / MP kayıtlarını burada görürsün.</p>
+          </div>
+          <button type="button" class="detail-close-btn" data-close-payment-detail>✕</button>
+        </div>
+        <div class="payment-detail-body" id="paymentDetailBody"></div>
+      </div>
+    </div>
+  </main>
+</div>
+<script>
+function confirmPanelReset(text) {
+  const value = window.prompt(text, "");
+  return value === "SIFIRLA";
+}
+window.addEventListener('load',()=>document.body.classList.add('loaded'));
+(function(){
+  const overlay = document.getElementById('paymentDetailOverlay');
+  const body = document.getElementById('paymentDetailBody');
+  if (!overlay || !body) return;
+  const detailMap = {
+    <% paymentData.historySummary.forEach(function(item, idx) { %>
+      "payment-detail-<%= idx %>": {
+        displayName: <%- JSON.stringify(item.displayName || '') %>,
+        username: <%- JSON.stringify(item.username || item.userId || '') %>,
+        gameName: <%- JSON.stringify(item.gameName || '-') %>,
+        totalEp: <%= Number(item.totalEp || 0) %>,
+        totalMp: <%= Number(item.totalMp || 0) %>,
+        paymentCount: <%= Number(item.paymentCount || 0) %>,
+        entries: <%- JSON.stringify(item.detailEntries || []) %>
+      },
+    <% }) %>
+  };
+
+  function renderDetail(entry) {
+    const rows = (entry.entries || []).map((row) => {
+      const trDate = row.timestamp ? new Date(row.timestamp).toLocaleString('tr-TR') : '-';
+      return `
+        <tr>
+          <td>${trDate}</td>
+          <td class="accent-gold">${row.epAmount || 0}</td>
+          <td class="accent-purple">${row.mpAmount || 0}</td>
+          <td>${row.counts?.todayCount || 0}</td>
+          <td>${row.counts?.yesterdayCount || 0}</td>
+          <td>${row.counts?.weeklyCount || 0}</td>
+          <td>${row.counts?.monthlyCount || 0}</td>
+        </tr>`;
+    }).join('');
+
+    body.innerHTML = `
+      <div class="detail-summary-strip">
+        <div><span>Yetkili</span><strong>${entry.displayName}</strong><small>${entry.username}</small></div>
+        <div><span>Oyun adı</span><strong>${entry.gameName}</strong></div>
+        <div><span>Toplam EP</span><strong class="accent-gold">${entry.totalEp}</strong></div>
+        <div><span>Toplam MP</span><strong class="accent-purple">${entry.totalMp}</strong></div>
+        <div><span>Ödeme sayısı</span><strong>${entry.paymentCount}</strong></div>
+      </div>
+      ${rows ? `
+      <div class="detail-table-wrap">
+        <table class="detail-payments-table">
+          <thead>
+            <tr>
+              <th>Tarih</th>
+              <th>EP</th>
+              <th>MP</th>
+              <th>Bugün</th>
+              <th>Dün</th>
+              <th>Hafta</th>
+              <th>Ay</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>` : '<div class="empty-detail">Bu kullanıcı için kayıt bulunamadı.</div>'}`;
+  }
+
+  function openDetail(key) {
+    const entry = detailMap[key];
+    if (!entry) return;
+    renderDetail(entry);
+    overlay.hidden = false;
+    overlay.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('modal-open');
+  }
+  function closeDetail() {
+    overlay.hidden = true;
+    overlay.setAttribute('aria-hidden', 'true');
+    body.innerHTML = '';
+    document.body.classList.remove('modal-open');
+  }
+  document.querySelectorAll('.history-detail-trigger').forEach((btn) => {
+    btn.addEventListener('click', () => openDetail(btn.dataset.detailTarget));
+  });
+  overlay.querySelectorAll('[data-close-payment-detail]').forEach((el) => {
+    el.addEventListener('click', closeDetail);
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && !overlay.hidden) closeDetail();
+  });
+})();
+</script>
+</body>
+</html>

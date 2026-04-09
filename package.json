@@ -1,0 +1,16 @@
+{
+  "name": "metin2-aktivite-bot-secure",
+  "version": "1.1.3",
+  "description": "Discord belirli kanal ve rollerde mesaj sayan bot + web panel",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.15.3",
+    "dotenv": "^16.4.5",
+    "ejs": "^3.1.10",
+    "express": "^4.19.2",
+    "express-session": "^1.18.0"
+  }
+}

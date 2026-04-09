@@ -1,0 +1,36 @@
+<% function isActive(path) { return currentPath === path ? 'active' : ''; } %>
+<aside class="sidebar">
+  <div class="brand">
+    <img src="/public/images/arkantos2.gif" alt="ARKANTOS2" class="brand-logo" />
+    <div>
+      <h2>ARKANTOS2</h2>
+      <span>YETKİLİ TAKİP</span>
+    </div>
+  </div>
+
+  <nav class="menu">
+    <a href="/" class="menu-item <%= isActive('/') %>"><span class="menu-emoji">▦</span> Aktivite Takibi</a>
+    <a href="/settings" class="menu-item <%= isActive('/settings') %>"><span class="menu-emoji">⚙️</span> Ayarlar</a>
+    <a href="/message-stats" class="menu-item <%= isActive('/message-stats') %>"><span class="menu-emoji">📊</span> Mesaj Takip</a>
+    <a href="/logs" class="menu-item <%= isActive('/logs') %>"><span class="menu-emoji">📝</span> Log</a>
+    <a href="/payments" class="menu-item <%= isActive('/payments') %>"><span class="menu-emoji">💸</span> Yatırılan Ödeme</a>
+    <a href="/logout" class="menu-item"><span class="menu-emoji">↗</span> Çıkış Yap</a>
+  </nav>
+</aside>
+
+<div class="nav-loader" id="navLoader">
+  <div class="loader-orb small"></div>
+  <span>Sayfa hazırlanıyor...</span>
+</div>
+<script>
+(function(){
+  const loader = document.getElementById('navLoader');
+  document.querySelectorAll('.menu-item[href]:not([href="/logout"])').forEach((link)=>{
+    link.addEventListener('click', function(e){
+      if (window.location.pathname === this.getAttribute('href')) return;
+      loader.classList.add('show');
+    });
+  });
+  window.addEventListener('pageshow', ()=> loader.classList.remove('show'));
+})();
+</script>

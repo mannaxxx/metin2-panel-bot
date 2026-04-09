@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Yetkili Yönetimi</title>
+  <link rel="stylesheet" href="/public/css/style.css" />
+</head>
+<body>
+<div class="layout">
+  <%- include('partials') %>
+
+  <main class="main">
+    <div class="page-header between">
+      <div>
+        <h1>Yetkili Yönetimi</h1>
+        <p>Sayılacak kanalları ve rolleri ayrı ekrandan yönet.</p>
+      </div>
+      <form method="post" action="/staff-management/sync">
+        <button class="btn btn-primary" type="submit">Discord'dan Listeyi Güncelle</button>
+      </form>
+    </div>
+
+    <% if (saved) { %>
+      <div class="alert success">İşlem tamamlandı.</div>
+    <% } %>
+
+    <% if (message) { %>
+      <div class="alert <%= messageType === 'error' ? 'error' : 'success' %>"><%= message %></div>
+    <% } %>
+
+    <div class="mini-grid management-summary">
+      <div class="mini-card">
+        <span>Toplam kanal</span>
+        <strong><%= channels.length %></strong>
+      </div>
+      <div class="mini-card">
+        <span>Toplam rol</span>
+        <strong><%= roles.length %></strong>
+      </div>
+      <div class="mini-card">
+        <span>Seçili kanal</span>
+        <strong><%= config.selectedChannelIds.length %></strong>
+      </div>
+      <div class="mini-card">
+        <span>Seçili rol</span>
+        <strong><%= config.selectedRoleIds.length %></strong>
+      </div>
+    </div>
+
+    <form method="post" action="/staff-management" class="form-card">
+      <div class="form-grid">
+        <div>
+          <div class="section-title">Sayılacak Kanallar</div>
+          <div class="select-list">
+            <% channels.forEach(function(channel) { %>
+              <label class="check-item">
+                <input type="checkbox" name="selectedChannelIds" value="<%= channel.id %>" <%= config.selectedChannelIds.includes(channel.id) ? 'checked' : '' %> />
+                <span># <%= channel.name %></span>
+              </label>
+            <% }) %>
+            <% if (channels.length === 0) { %>
+              <div class="empty-note">Önce Ayarlar kısmından token ve sunucu ID gir. Sonra burada "Discord'dan Listeyi Güncelle" butonuna bas.</div>
+            <% } %>
+          </div>
+        </div>
+
+        <div>
+          <div class="section-title">Sayılacak Roller</div>
+          <div class="select-list">
+            <% roles.forEach(function(role) { %>
+              <label class="check-item">
+                <input type="checkbox" name="selectedRoleIds" value="<%= role.id %>" <%= config.selectedRoleIds.includes(role.id) ? 'checked' : '' %> />
+                <span>@<%= role.name %></span>
+              </label>
+            <% }) %>
+            <% if (roles.length === 0) { %>
+              <div class="empty-note">Henüz rol listesi çekilmedi.</div>
+            <% } %>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-primary" type="submit">Seçimleri Kaydet</button>
+        <a href="/" class="btn btn-secondary">Panele Dön</a>
+      </div>
+    </form>
+  </main>
+</div>
+</body>
+</html>
