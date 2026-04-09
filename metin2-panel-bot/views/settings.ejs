@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ayarlar</title>
+  <link rel="stylesheet" href="/public/css/style.css" />
+</head>
+<body>
+<div class="layout">
+  <%- include('partials') %>
+
+  <main class="main">
+    <div class="page-header">
+      <h1>Ayarlar</h1>
+      <p>Bot bağlantısını, panel metinlerini ve sayım ayarlarını tek sayfadan yönet.</p>
+    </div>
+
+    <% if (saved) { %>
+      <div class="alert success">İşlem kaydedildi.</div>
+    <% } %>
+
+    <% if (message) { %>
+      <div class="alert <%= messageType === 'error' ? 'error' : 'success' %>"><%= message %></div>
+    <% } %>
+
+    <section class="settings-hero">
+      <div class="status-panel">
+        <div>
+          <strong>Discord Durumu</strong>
+          <% if (discordState.connected) { %>
+            <span class="status-inline ok">Bağlı - <%= discordState.userTag %></span>
+          <% } else { %>
+            <span class="status-inline bad">Bağlı değil<%= discordState.lastError ? ' - ' + discordState.lastError : '' %></span>
+          <% } %>
+        </div>
+        <small>Son güncelleme: <%= discordState.lastSyncAt || 'Henüz yapılmadı' %></small>
+      </div>
+
+      <div class="mini-grid management-summary compact-summary">
+        <div class="mini-card icon-card">
+          <span>Çekilen kanal</span>
+          <strong><%= channels.length %></strong>
+        </div>
+        <div class="mini-card icon-card">
+          <span>Çekilen rol</span>
+          <strong><%= roles.length %></strong>
+        </div>
+        <div class="mini-card icon-card">
+          <span>Seçili kanal</span>
+          <strong><%= config.selectedChannelIds.length %></strong>
+        </div>
+        <div class="mini-card icon-card">
+          <span>Seçili rol</span>
+          <strong><%= config.selectedRoleIds.length %></strong>
+        </div>
+      </div>
+    </section>
+
+    <section class="settings-shell">
+      <div class="settings-column">
+        <div class="section-title with-badge">
+          <div>
+            <span class="section-overline">BAĞLANTI</span>
+            <h2>Bot ve Panel Bilgileri</h2>
+          </div>
+          <span class="section-badge">Ana Ayarlar</span>
+        </div>
+
+        <form method="post" action="/settings" class="form-card settings-card">
+          <div class="alert info">
+            Güvenli sürüm aktif. <strong>BOT_TOKEN</strong>, <strong>GUILD_ID</strong>, <strong>PANEL_PASSWORD</strong> ve <strong>SESSION_SECRET</strong> sadece <code>.env</code> dosyasından okunur; panelde gösterilmez ve diske yazılmaz.
+          </div>
+
+          <div class="input-row">
+            <div class="mini-card icon-card">
+              <span>Bot Token</span>
+              <strong><%= secureMeta.tokenConfigured ? 'Ayarlı' : 'Eksik' %></strong>
+            </div>
+            <div class="mini-card icon-card">
+              <span>Sunucu ID</span>
+              <strong><%= secureMeta.guildConfigured ? 'Ayarlı' : 'Eksik' %></strong>
+            </div>
+          </div>
+
+          <div class="input-row">
+            <div class="input-group">
+              <label>Yönetim Bölüm Başlığı</label>
+              <input type="text" name="managementSectionTitle" value="<%= config.managementSectionTitle %>" placeholder="Örnek: Yetkili Yönetimi" required />
+            </div>
+            <div class="input-group">
+              <label>Panel Başlığı</label>
+              <input type="text" name="panelTitle" value="<%= config.panelTitle %>" required />
+            </div>
+          </div>
+
+          <div class="input-group">
+            <label>Panel Alt Başlığı</label>
+            <input type="text" name="panelSubtitle" value="<%= config.panelSubtitle %>" required />
+          </div>
+
+          <div class="form-actions top-actions">
+            <button class="btn btn-primary" type="submit" name="action" value="sync">Kaydet ve Güncelle</button>
+            <button class="btn btn-secondary" type="submit" name="action" value="save">Sadece Kaydet</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="settings-column">
+        <div class="section-title with-badge">
+          <div>
+            <span class="section-overline">SAYIM AYARLARI</span>
+            <h2><%= config.managementSectionTitle %></h2>
+          </div>
+          <div class="section-actions">
+            <form method="post" action="/settings/sync">
+              <button class="btn btn-secondary" type="submit">Discord'dan Listeyi Güncelle</button>
+            </form>
+          </div>
+        </div>
+
+        <form method="post" action="/settings/tracking" class="form-card settings-card tracking-card" id="trackingForm">
+          <div class="tracking-grid">
+            <div class="tracking-panel full-width">
+              <div class="tracking-head">
+                <div>
+                  <h3>Oyun İçi Kullanıcı Adı Kanalı</h3>
+                  <p>Yetkililer oyun içi adlarını bu kanala yazınca ödeme paneline otomatik düşer.</p>
+                </div>
+                <span class="pill"><%= config.usernameSourceChannelId ? 'seçili' : 'yok' %></span>
+              </div>
+
+              <div class="input-group">
+                <label>Kullanıcı adlarının okunacağı kanal</label>
+                <select name="usernameSourceChannelId">
+                  <option value="">Kanal seçilmedi</option>
+                  <% channels.forEach(function(channel) { %>
+                    <option value="<%= channel.id %>" <%= config.usernameSourceChannelId === channel.id ? 'selected' : '' %>># <%= channel.name %></option>
+                  <% }) %>
+                </select>
+                <small class="muted">Örnek: #oyun-ici-isim. Bu kanaldaki son geçerli mesaj oyun içi kullanıcı adı olarak kullanılır.</small>
+              </div>
+            </div>
+            <div class="tracking-panel">
+              <div class="tracking-head">
+                <div>
+                  <h3>Sayılacak Kanallar</h3>
+                  <p>Mesaj sayımı yapılacak yazı kanallarını seç.</p>
+                </div>
+                <span class="pill"><%= config.selectedChannelIds.length %> seçili</span>
+              </div>
+
+              <div class="select-list refined">
+                <% channels.forEach(function(channel) { %>
+                  <label class="check-item pretty">
+                    <input type="checkbox" name="selectedChannelIds" value="<%= channel.id %>" <%= config.selectedChannelIds.includes(channel.id) ? 'checked' : '' %> />
+                    <span class="check-meta">
+                      <strong># <%= channel.name %></strong>
+                      <small>Kanal ID: <%= channel.id %></small>
+                    </span>
+                  </label>
+                <% }) %>
+                <% if (channels.length === 0) { %>
+                  <div class="empty-state-card">
+                    <strong>Henüz kanal listesi yok</strong>
+                    <p>Önce VDS içindeki .env dosyasına BOT_TOKEN ve GUILD_ID gir. Sonra “Discord'dan Listeyi Güncelle” butonuna bas.</p>
+                  </div>
+                <% } %>
+              </div>
+            </div>
+
+            <div class="tracking-panel">
+              <div class="tracking-head">
+                <div>
+                  <h3>Sayılacak Roller</h3>
+                  <p>Mesajları sayılacak yetkili rollerini seç.</p>
+                </div>
+                <span class="pill"><%= config.selectedRoleIds.length %> seçili</span>
+              </div>
+
+              <div class="select-list refined">
+                <% roles.forEach(function(role) { %>
+                  <label class="check-item pretty">
+                    <input type="checkbox" name="selectedRoleIds" value="<%= role.id %>" <%= config.selectedRoleIds.includes(role.id) ? 'checked' : '' %> />
+                    <span class="check-meta">
+                      <strong>@<%= role.name %></strong>
+                      <small>Rol ID: <%= role.id %></small>
+                    </span>
+                  </label>
+                <% }) %>
+                <% if (roles.length === 0) { %>
+                  <div class="empty-state-card">
+                    <strong>Henüz rol listesi yok</strong>
+                    <p>Bot başarıyla bağlandıktan sonra aynı bölümden rol listesini çekebilirsin.</p>
+                  </div>
+                <% } %>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Seçimleri Kaydet</button>
+            <span id="trackingAutoSaveState" class="muted">Rol ve kanal seçimleri otomatik uygulanır.</span>
+          </div>
+        </form>
+      </div>
+</section>
+  
+<section class="settings-shell">
+  <div class="settings-column">
+    <div class="section-title with-badge">
+      <div>
+        <span class="section-overline">VERİ KORUMA</span>
+        <h2>Kalıcı Veri ve Yedekleme</h2>
+      </div>
+      <span class="section-badge">v18</span>
+    </div>
+
+    <div class="form-card settings-card">
+      <div class="alert success">
+        Bu sürümde veriler artık proje klasöründe değil, <code>/root/panel-data</code> içinde tutulur.
+        Yeni zip kurarken proje klasörünü silsen bile mesaj sayıları korunur.
+      </div>
+
+      <div class="form-actions top-actions">
+        <form method="post" action="/admin/create-backup">
+          <button class="btn btn-primary" type="submit">Şimdi Yedek Al</button>
+        </form>
+      </div>
+
+      <div class="backup-status-box" id="backupStatusBox">
+        <div class="muted">Yedekler yükleniyor...</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+(async function(){
+  const box = document.getElementById('backupStatusBox');
+  if(!box) return;
+  try{
+    const res = await fetch('/api/backup-status');
+    const data = await res.json();
+    if(!data.ok){
+      box.innerHTML = '<div class="alert error">Yedek durumu alınamadı.</div>';
+      return;
+    }
+    const items = (data.backups || []).map(name => `<li>${name}</li>`).join('');
+    box.innerHTML = `
+      <div class="backup-meta"><strong>Veri Klasörü:</strong> <code>${data.dataDir}</code></div>
+      <div class="backup-meta"><strong>Son Yedekler:</strong></div>
+      <ul class="backup-list">${items || '<li>Henüz yedek yok</li>'}</ul>
+    `;
+  }catch(e){
+    box.innerHTML = '<div class="alert error">Yedek durumu alınamadı.</div>';
+  }
+})();
+</script>
+<script>
+(function(){
+  const form = document.getElementById('trackingForm');
+  const state = document.getElementById('trackingAutoSaveState');
+  if(!form) return;
+  let timer = null;
+  let inFlight = false;
+
+  function setState(text, cls){
+    if(!state) return;
+    state.textContent = text;
+    state.className = cls || 'muted';
+  }
+
+  async function pushSelections(){
+    if(inFlight) return;
+    inFlight = true;
+    setState('Seçimler uygulanıyor...', 'muted');
+    const fd = new FormData(form);
+    const payload = {
+      selectedChannelIds: fd.getAll('selectedChannelIds'),
+      selectedRoleIds: fd.getAll('selectedRoleIds'),
+      usernameSourceChannelId: fd.get('usernameSourceChannelId') || ''
+    };
+    try {
+      const res = await fetch('/api/settings/tracking', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if(!data.ok) throw new Error(data.message || 'Kaydedilemedi');
+      setState('Seçimler otomatik uygulandı.', 'success-inline');
+    } catch (err) {
+      setState('Otomatik uygulama başarısız: ' + err.message, 'error-inline');
+    } finally {
+      inFlight = false;
+    }
+  }
+
+  form.addEventListener('change', function(e){
+    if(!(e.target && (e.target.matches('input[type="checkbox"]') || e.target.matches('select[name="usernameSourceChannelId"]')))) return;
+    clearTimeout(timer);
+    setState('Değişiklik algılandı...', 'muted');
+    timer = setTimeout(pushSelections, 400);
+  });
+})();
+</script>
+
+  </main>
+</div>
+</body>
+</html>
